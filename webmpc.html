@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="en">
+<head><title>WebMPC</title>
+
+<meta charset="utf-8">
+
+<link rel="stylesheet" type="text/css" href="css/pepper-grinder/jquery-ui-1.10.3.custom.css">
+<link rel="stylesheet" type="text/css" href="css/css.css">
+
+<script src="js/jquery-1.10.2.min.js"></script>
+<script src="js/jquery-ui-1.10.3.custom.min.js"></script>
+<script src="js/jquery.nicescroll.min.js"></script>
+<script src="js/callbacks.js"></script>
+<script src="js/mpd.js"></script>
+
+
+
+<script>
+
+// Sort of a "theme". Will be customizeable in perspective.
+var bgColor = "#f0f0f0";
+var songItemBgLight = "#f9f7f5";
+var songItemBgDark = "#f0f0f0";
+var songItemBgSelected = "#e09040";
+var playlistBg = songItemBgLight;
+var textColor = "#a07030";
+var textColorSelected = "#fafafa";
+
+
+var toolboxHeight = '150px';
+var toolboxHeightCollapsed = '30px';
+
+function log(text) {
+	console.log(text);
+}
+
+
+//
+// Process received updates
+//
+
+var userChangesPosition = false;
+var playingState = '';
+
+// "Current" data
+var curSongId = -1;
+var curPlaylist = -1;
+
+function updateCurrentSong(song) {
+	var title  = 'title' in song  ? song['title']  : 'unknown track';
+	var artist = 'artist' in song ? song['artist'] : 'unknown artist';
+	var album  = 'album' in song  ? song['album']  : 'unknown album';
+	var year  = 'date' in song  ? song['date']  : '--';
+	var id  = 'id' in song  ? song['id']  : -1;
+
+	curSongId = id;
+		
+	$("#cur_song_title").text( title );
+	$("#cur_song_artist").text( artist );
+	$("#cur_song_album").text( album + " (" + year + ")" );
+
+	window.document.title = artist + " - " + title;
+}
+
+function updateStatus(status) {
+
+	// Volume
+	var vol =  "volume" in status ? status["volume"] : "--";
+	$("#currentVol").text(vol+"%");
+
+	// Current position
+	if ( ! userChangesPosition ) {
+		var curTime = 0;
+		if ( 'time' in status ) {
+			time = status['time'].split(":");
+			// console.log(time);
+			curTime = Math.round(time[0] * 100 / time[1]);
+		}
+		$("#position").slider( { 'value' : curTime } );
+	}
+
+	// Playing state
+	if ( 'state' in status ) {
+		playingState = status['state'];
+		switch ( playingState ) {
+			case 'play' :
+				$("#play").hide();
+				$("#pause").show();
+				break;
+
+			case 'pause':
+			case 'stop':
+				$("#play").show();
+				$("#pause").hide();
+				break;
+		}
+	}
+
+
+	// Outputs
+	updateOutputs( status );
+
+
+	// Current song in playlist
+	updatePlaylistColors( 'song' in status ? status['song'] : -1 );
+
+	// Check if need to update current song
+	if ( 'songid' in status ) {
+		var id = status['songid'];
+		if ( id != curSongId ) {
+			MPD.currentSong();
+		}
+	}
+
+	// Check if need to update playlist
+	if ( 'playlist' in status ) {
+		var pl = status['playlist'];
+		if ( pl != curPlaylist ) {
+			curPlaylist = pl;
+			MPD.playlist();
+		}
+	}
+}
+
+function updateOutputs(status) {
+	if ( 'outputs' in status ) {
+		outputs = status['outputs'];
+
+		// Format html for output devices
+		outputs_html = "<div id='outputs_title'>Output Devices</div>";
+		for ( var i=0; i < outputs.length; i++ ) {
+			var output = outputs[i];
+			var name = "output" + output.outputid;
+
+			outputs_html += "<div class='output'>";
+			outputs_html += "<div class='output_id'>" + output.outputid + "</div>";
+			outputs_html += "<div class='output_state'>" + output.outputenabled + "</div>";
+			outputs_html += "<div class='output_name' id='" + name + "'>" + output.outputname + "</div>";
+			outputs_html += "</div>";
+		}
+		$("#outputs").html(outputs_html);
+
+		// Set proper background and text color depending on whether the output is enabled
+		// Kinda ugly since we're iterating through the list of outputs twice
+		// but I can live with that since there's usually a handful of output
+		// devices, and network lag is much more significant here.
+		for ( var i=0; i < outputs.length; i++ ) {
+			var output = outputs[i];
+			$( "#output"+output.outputid ).css('background', output.outputenabled === '1' ? songItemBgSelected : bgColor );
+			$( "#output"+output.outputid ).css('color', output.outputenabled === '1' ? textColorSelected : textColor );
+			$( "#output"+output.outputid ).css('border', '1px solid ' + textColor );
+		}
+
+		$(".output").click( function() {
+			var out_id = $(this).find(".output_id").text();
+			var enabled = $(this).find(".output_state").text();
+			if ( enabled === '1' ) {
+				MPD.disableOutput( out_id );
+			}
+			else {
+				MPD.enableOutput( out_id );
+			}
+		});
+
+	}
+}
+
+function updatePlaylistColors(songIndex) {
+	var even = true;
+	var playlist = $("#playlist").find(".song_item").each( function(index) {
+		$(this).css('background', index == songIndex ? songItemBgSelected : (even ? songItemBgLight : songItemBgDark) );
+		$(this).css('color', index == songIndex ? textColorSelected : textColor );
+		$(this).css('border-radius', index == songIndex ? 20 : 0 );
+		$(this).css('font-size', index == songIndex ? '110%' : '100%' );
+		even = !even;
+	});
+}
+
+function updatePlaylist(data) {
+	if ( "playlist" in data ) {
+		var list = data["playlist"];
+		var count = list.length;
+
+		var text = "";
+		for ( var i = 0; i < count; i++ ) {
+			var song = list[i];
+
+			text += "<div class='song_item'><div>" + song['artist'] + " - " + song['title'] + "</div><div class='song_id'>" + song['id'] + "</div></div>";
+		}
+
+		$("#playlist").html(text);
+		$(".song_item").click( function() {
+			var song_id = $(this).find(".song_id").text();
+			// log( song_id );
+			MPD.playSong(song_id);
+		});
+	}
+
+	updatePlaylistColors(-1);
+}
+
+
+function onTimer() {
+	MPD.status();
+}
+
+
+function setToolboxHeight(height) {
+	$("#content").css('padding-bottom', height);
+	$("#toolbox").css('margin-bottom', '-' + height);
+	$("#toolbox").css('height', height);
+	$("#playlist").getNiceScroll().resize();
+	if ( height === toolboxHeight ) {
+		$("#show_toolbox").hide();
+		$("#hide_toolbox").show();
+	}
+	else {
+		$("#show_toolbox").show();
+		$("#hide_toolbox").hide();
+	}
+}
+
+$(function() {
+
+	////////////////
+	// set up scroll areas
+	
+	$('#playlist').niceScroll();
+
+
+	////////////////
+	// toolbox
+
+	$( "#show_hide" ).button();
+	$( "#show_toolbox" ).button();
+	$( "#hide_toolbox" ).button();
+
+	setToolboxHeight(toolboxHeightCollapsed);
+
+	$( "#show_toolbox" ).click(function( event ) {
+		setToolboxHeight(toolboxHeight);
+	});
+	$( "#hide_toolbox" ).click(function( event ) {
+		setToolboxHeight(toolboxHeightCollapsed);
+	});
+
+	// temporarily hide the toolbox - uncomment later
+	setToolboxHeight(0);
+	$("#show_toolbox").hide();
+	$("#hide_toolbox").hide();
+
+
+	////////////////////////////////////
+	// UI 
+
+	$("body").disableSelection();
+	$("#pause").hide();
+
+	// init buttons background
+	$("body").css("color", textColor);
+	$("#playlist").css("background", playlistBg);
+	$("#controls").css("background", bgColor);
+	$(".button").mousedown(function() { $(this).css("opacity", 0.7); });
+	$(".button").mouseup(function() { $(this).css("opacity", 1); });
+
+	$("#position").slider( { 
+		'min' : 0, 
+		'max' : 100, 
+		
+		// change : function( event, ui ) {},
+
+		start : function(event, ui) {
+			userChangesPosition = true;
+		},
+
+		stop : function(event, ui) {
+			MPD.setPos(ui.value);
+			userChangesPosition = false;
+		}
+	});
+
+
+	// connect events
+	$("#play")   .click( MPD.play        );
+	$("#pause")  .click( MPD.pause       );
+	$("#stop")   .click( MPD.stop        );
+	$("#next")   .click( MPD.next        );
+	$("#prev")   .click( MPD.prev        );
+	$("#cur")    .click( MPD.currentSong );
+	$("#volUp")  .click( MPD.volumeUp    );
+	$("#volDown").click( MPD.volumeDown  );
+
+
+	// initialize MPD
+	MPD.setHost( window.location.hostname, window.location.port );
+
+
+	// retrieve initial data
+	MPD.currentSong();
+	MPD.status();
+	MPD.playlist();
+
+
+	// start the timer
+	window.setInterval( onTimer, 2000 );
+});
+
+</script>
+
+
+</head>
+<body>
+
+<div id="content">
+
+	<!-- Player -->
+	<div id="player">
+	
+		<!-- Controls -->
+		<div id="controls">
+
+			<!-- Current song -->
+			<div id="cur_song_title">---</div>
+			<div id="cur_song_artist">---</div>
+			<div id="cur_song_album">---</div>
+
+
+			<!-- Position -->
+			<div id="position"></div>
+		
+
+			<!-- Buttons -->
+			<div id="buttons">
+				<img class="button" id="prev"  src="img/prev.png"  alt="Previous"/>
+				<img class="button" id="play"  src="img/play.png"  alt="Play"/>
+				<img class="button" id="pause" src="img/pause.png" alt="Pause"/>
+				<img class="button" id="stop"  src="img/stop.png"  alt="Stop"/>
+				<img class="button" id="next"  src="img/next.png"  alt="Next"/>
+			</div>
+			<!-- /Buttons -->
+
+
+			<!-- Volume -->
+			<div id="volume">
+				<img class="button" id="volDown" src="img/volume_down.png" alt="Volume down"/>
+				<div id="currentVol">--%</div>
+				<img class="button" id="volUp" src="img/volume_up.png" alt="Volume up"/>
+			</div>
+			<!-- /Volume -->
+
+
+			<!-- Outputs -->
+			<div id="outputs"></div>
+
+		</div>
+		<!-- /Controls -->
+
+
+		<!-- Playlist -->
+		<div id="playlist"></div>
+
+	</div>
+	<!-- /Player -->
+
+	<footer id="toolbox">
+		<button id="hide_toolbox"><span class="ui-icon ui-icon-triangle-1-s"></span></button>
+		<button id="show_toolbox"><span class="ui-icon ui-icon-triangle-1-n"></span></button>
+	</footer>
+
+</div>
+
+
+</body>
+</html>
