@@ -45,7 +45,7 @@ class MPDFacade :
 	def volumeUp(self):
 		st = self.__client.status()
 		curVolume = int(st['volume'])
-		curVolume += 10
+		curVolume += 5
 		if ( curVolume > 100 ) :
 			curVolume = 100
 		song = self.__client.setvol(curVolume)
@@ -53,7 +53,7 @@ class MPDFacade :
 	def volumeDown(self):
 		st = self.__client.status()
 		curVolume = int(st['volume'])
-		curVolume -= 10
+		curVolume -= 5
 		if ( curVolume < 0 ) :
 			curVolume = 0
 		song = self.__client.setvol(curVolume)
