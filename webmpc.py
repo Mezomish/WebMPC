@@ -26,15 +26,7 @@ import json
 import cherrypy as Ch
 
 import MPDFacade
-
-# Host and port for the current server
-host='0.0.0.0'
-port=8080
-
-# Host and port for MPD server
-mpd_host='192.168.1.3'
-mpd_port=6600
-
+import config
 
 '''
 Some decorators for further convenience.
@@ -209,7 +201,7 @@ class WebMPC(object):
 			return json.dumps( mpdFacade.currentSong() )
 
 
-mpdFacade = MPDFacade.MPDFacade(host=mpd_host, port=mpd_port)
+mpdFacade = MPDFacade.MPDFacade(host=config.mpd_host, port=config.mpd_port)
 mpdFacade.connect()
 
 if __name__ == '__main__':
@@ -217,8 +209,8 @@ if __name__ == '__main__':
 	Ch.engine.signal_handler.handlers["SIGINT"] = sys.exit
 	Ch.quickstart( WebMPC(), '/', config = {
 		'global' : {
-			'server.socket_host': host,
-			'server.socket_port': port
+			'server.socket_host': config.host,
+			'server.socket_port': config.port
 			},
 		'/js': {
 			'tools.staticdir.on': True,
