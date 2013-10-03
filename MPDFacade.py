@@ -67,6 +67,8 @@ class MPDFacade :
 			p = pos * length / 100
 		self.__client.seek(id, p)
 
+	def random(self, on) :
+		self.__client.random( 1 if on == "true" else 0 )
 
 	####################################
 	# Outputs

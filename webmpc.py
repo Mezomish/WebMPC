@@ -88,7 +88,7 @@ class WebMPC(object):
 		# status
 		with self.__mpd_lock :
 			st = mpdFacade.status()
-		for key in ['volume', 'time', 'state', 'song', 'songid', 'playlist'] :
+		for key in ['volume', 'time', 'state', 'song', 'songid', 'playlist', 'random'] :
 			st_subset[key] = st[key]
 		
 		# outputs
@@ -157,6 +157,13 @@ class WebMPC(object):
 	def setPos(self, pos) :
 		with self.__mpd_lock :
 			mpdFacade.setPos(int(pos))
+			return json.dumps( mpdFacade.status() )
+
+	@Ch.expose
+	@Ch.tools.allow(methods=['POST'])
+	def random(self, on) :
+		with self.__mpd_lock :
+			mpdFacade.random(on)
 			return json.dumps( mpdFacade.status() )
 
 

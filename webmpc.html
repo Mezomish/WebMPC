@@ -45,6 +45,7 @@ var playingState = '';
 // "Current" data
 var curSongId = -1;
 var curPlaylist = -1;
+var curRandom = "";
 
 function updateCurrentSong(song) {
 	var title  = 'title' in song  ? song['title']  : 'unknown track';
@@ -96,6 +97,16 @@ function updateStatus(status) {
 		}
 	}
 
+	// Random
+	if ( 'random' in status ) {
+		curRandom = status['random'];
+		if ( curRandom === '1' ) {
+			$( "#random").css("background", songItemBgSelected);
+		}
+		else {
+			$( "#random").css("background", bgColor);
+		}
+	}
 
 	// Outputs
 	updateOutputs( status );
@@ -289,6 +300,7 @@ $(function() {
 	$("#cur")    .click( MPD.currentSong );
 	$("#volUp")  .click( MPD.volumeUp    );
 	$("#volDown").click( MPD.volumeDown  );
+	$("#random") .click( function() { MPD.random( curRandom == "0" ); } );
 
 
 	// initialize MPD
@@ -348,6 +360,9 @@ $(function() {
 			</div>
 			<!-- /Volume -->
 
+			<div id="play_modes">
+				<img class="play_mode" id="random" src="img/random.png" alt="Random" />
+			</div>
 
 			<!-- Outputs -->
 			<div id="outputs"></div>

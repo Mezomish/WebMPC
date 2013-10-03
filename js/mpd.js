@@ -57,6 +57,10 @@ var MPD = {
 		$.post( url_base + '/playSong?id='+song_id, null, Callback.onCurrentSong );
 	},
 
+	random : function(on) {
+		$.post( url_base + '/random?on='+on, null, Callback.onStatus );
+	},
+
 
 	// Outputs
 

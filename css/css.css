@@ -46,6 +46,10 @@ body {
 	margin-top: 20px;
 }
 
+#buttons {
+	margin-bottom: 20px;
+}
+
 .button {
 	width: 70px;
 	height: 70px;
@@ -73,9 +77,9 @@ body {
 }
 
 #volume {
-	padding-top: 30px;
-	padding-left: 70px;
+	padding-left: 10px;
 	overflow: hidden;
+	float: left;
 }
 
 #volume * {
@@ -92,6 +96,18 @@ body {
 	width: 55px;
 	text-align: center;
 	font-size: 110%;
+}
+
+#play_modes {
+	overflow: hidden;
+	padding-right: 10px;
+}
+
+.play_mode {
+	border-radius: 10px;
+	width: 50px;
+	height: 50px;
+	float: right;
 }
 
 #outputs {
