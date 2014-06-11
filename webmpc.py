@@ -89,7 +89,12 @@ class WebMPC(object):
 		with self.__mpd_lock :
 			st = mpdFacade.status()
 		for key in ['volume', 'time', 'state', 'song', 'songid', 'playlist', 'random'] :
-			st_subset[key] = st[key]
+			try :
+				st_subset[key] = st[key]
+			except KeyError as e:
+				# It it's not playing now then there's not gonna be 'time' key
+				# in status, so it will throw a KeyError. We don't care, so we just skip it.
+				pass
 		
 		# outputs
 		with self.__mpd_lock :
